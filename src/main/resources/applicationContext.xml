@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context
+        http://www.springframework.org/schema/context/spring-context.xsd
+        http://www.springframework.org/schema/aop
+        http://www.springframework.org/schema/aop/spring-aop.xsd
+        http://www.springframework.org/schema/tx
+        http://www.springframework.org/schema/tx/spring-tx.xsd">
+    <!--数据源-->
+    <context:property-placeholder location="classpath:db.properties"/>
+    <bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource">
+        <property name="driverClass" value="${jdbc.driver}"/>
+        <property name="jdbcUrl" value="${jdbc.url}"/>
+        <property name="user" value="${jdbc.username}"/>
+        <property name="password" value="${jdbc.password}"/>
+    </bean>
+
+    <!--事务管理器-->
+    <bean id="dataSourceTransactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property name="dataSource" ref="dataSource"/>
+    </bean>
+
+    <!--基于注解的事物管理-->
+    <tx:annotation-driven transaction-manager="dataSourceTransactionManager"/>
+
+    <!--配置sqlSessionFactoryBean
+        mybatis提供的：org.mybatis.spring.SqlSessionFactoryBean
+        mybatis-plus提供的：com.baomidou.mybatisplus.spring.MybatisSqlSessionFactoryBean
+    -->
+    <bean id="sqlSessionFactoryBean" class="com.baomidou.mybatisplus.spring.MybatisSqlSessionFactoryBean">
+        <!--数据源-->
+        <property name="dataSource" ref="dataSource"/>
+        <property name="configLocation" value="classpath:mybatis-config.xml"/>
+        <!--别名处理-->
+        <property name="typeAliasesPackage" value="com.llz.mp.entity"/>
+        <!--注入全局MP策略配置-->
+        <property name="globalConfig" ref="globalConfiguration"/>
+        <!--插件注册-->
+        <property name="plugins">
+            <list>
+                <!--注册分页插件-->
+                <bean class="com.baomidou.mybatisplus.plugins.PaginationInterceptor"/>
+                <!--注册执行分析插件 只建议在开发环境使用-->
+                <bean class="com.baomidou.mybatisplus.plugins.SqlExplainInterceptor">
+                    <!--若发现sql是对全表的更新或删除操作则停止-->
+                    <property name="stopProceed" value="true"/>
+                </bean>
+                <!--注册性能分析插件 只建议在开发环境使用-->
+                <bean class="com.baomidou.mybatisplus.plugins.PerformanceInterceptor">
+                    <!--格式化sql-->
+                    <property name="format" value="true"/>
+                    <!--sql执行最长时间  单位ms-->
+                    <!--<property name="maxTime" value=""/>-->
+                </bean>
+                <!--注册乐观锁插件-->
+                <bean class="com.baomidou.mybatisplus.plugins.OptimisticLockerInterceptor"/>
+            </list>
+        </property>
+    </bean>
+
+    <!--定义mybatis全局策略配置-->
+    <bean id="globalConfiguration" class="com.baomidou.mybatisplus.entity.GlobalConfiguration">
+        <!--mybatis-plus 2.3版本后，dbColumnUnderline默认值即为true，数据库下划线与pojo中驼峰匹配-->
+        <property name="dbColumnUnderline" value="true"/>
+        <!--全局主键策略,0表示主键自增-->
+        <property name="idType" value="0"/>
+        <!--当使用Oracle时，全局主键策略配置为idType.INPUT，即1-->
+        <!--<property name="idType" value="1"/>-->
+        <!--全局表前缀策略配置，若所有表都有相同前缀可在此配置-->
+        <property name="tablePrefix" value=""/>
+        <!--注入自定义全局操作-->
+        <!--<property name="sqlInjector" ref="mySqlInjector"/>-->
+        <!--注入逻辑删除-->
+        <property name="sqlInjector" ref="logicSqlInjector"/>
+        <!--注入逻辑删除全局值  -1表示删除时的取值  1表示未删除的取值-->
+        <property name="logicDeleteValue" value="-1"/>
+        <property name="logicNotDeleteValue" value="1"/>
+        <!--注入公共字段填充处理器-->
+        <property name="metaObjectHandler" ref="myMetaObjectHandler"/>
+        <!--注入Oracle主键Sequence-->
+        <!--<property name="keyGenerator" ref="oracleKeyGenerator"/>-->
+    </bean>
+
+    <!--定义自定义注入器-->
+    <bean class="com.llz.mp.injector.MySqlInjector" id="mySqlInjector"/>
+
+    <!--逻辑删除-->
+    <bean class="com.baomidou.mybatisplus.mapper.LogicSqlInjector" id="logicSqlInjector"/>
+
+    <!--公共字段填充处理器-->
+    <bean class="com.llz.mp.metaObject.MyMetaObjectHandler" id="myMetaObjectHandler"/>
+
+    <!--Oracle配置主键Sequence-->
+    <!--<bean class="com.baomidou.mybatisplus.incrementer.OracleKeyGenerator" id="oracleKeyGenerator"/>-->
+
+    <!--配置mybatis扫描mapper接口的路径-->
+    <bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+        <property name="basePackage" value="com.llz.mp.mapper"/>
+    </bean>
+</beans>
